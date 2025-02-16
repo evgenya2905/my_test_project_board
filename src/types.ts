@@ -15,5 +15,5 @@ export type FetchIssuesType = typeof issuesApi.useLazyGetToDoIssuesQuery;
 export interface IContainerIssuesProps {
   title: string;
   paramsUrl: IEndpointParameter | null;
-  fetchIssues: FetchIssuesType;
+  /* fetchIssues: FetchIssuesType; */
 }

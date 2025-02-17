@@ -1,30 +1,30 @@
-import { Container, Row, Col, Spinner } from 'react-bootstrap';
-import { CardIssue } from './CardIssue';
-import { useEffect, useState } from 'react';
-import { IContainerIssuesProps } from './types';
 import { useDispatch } from 'react-redux';
-import { updateRepoIssues } from './store/changeRepoSlice';
-import { DropIndicator } from './DropIndicator';
+import { Container, Row, Col, Spinner } from 'react-bootstrap';
+import { updateRepoIssues } from '../../store/changeRepoSlice';
 
-export const ContainerIssues /* : React.FC<IContainerIssuesProps> */ = ({
+import { IContainerIssuesProps } from '../../types';
+import { CardIssue, DropIndicator } from '..';
+
+export const ContainerIssues: React.FC<IContainerIssuesProps> = ({
   title,
   column,
   issues,
   setIssues,
   paramsUrl,
   isLoading,
-}: any) => {
+}) => {
   const dispatch = useDispatch();
-  const [active, setActive] = useState(false);
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, issue: any) => {
-    e.dataTransfer.setData('issueId', issue.id);
+  const handleDragStart = (
+    e: React.DragEvent<HTMLDivElement>,
+    issue: { title: string; id: number; column: string }
+  ) => {
+    e.dataTransfer.setData('issueId', String(issue.id));
   };
 
   const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const issueId = e.dataTransfer.getData('issueId');
 
-    setActive(false);
     clearHighlights();
 
     const indicators = getIndicators();
@@ -35,18 +35,18 @@ export const ContainerIssues /* : React.FC<IContainerIssuesProps> */ = ({
     if (before != issueId) {
       let copy = [...issues];
 
-      let issueToTransfer = copy.find((i) => i.id == issueId);
+      let issueToTransfer = copy.find((i) => String(i.id) === issueId);
       if (!issueToTransfer) return;
       issueToTransfer = { ...issueToTransfer, column };
 
-      copy = copy.filter((i) => i.id != issueId);
+      copy = copy.filter((i) => String(i.id) !== issueId);
 
       const moveToBack = before === '-1';
 
       if (moveToBack) {
         copy.push(issueToTransfer);
       } else {
-        const insertAtIndex = copy.findIndex((el) => el.id == before);
+        const insertAtIndex = copy.findIndex((el) => String(el.id) === before);
         if (insertAtIndex === -1) return;
 
         copy.splice(insertAtIndex, 0, issueToTransfer);
@@ -55,7 +55,7 @@ export const ContainerIssues /* : React.FC<IContainerIssuesProps> */ = ({
       setIssues(copy);
       dispatch(
         updateRepoIssues({
-          id: `${paramsUrl.repo}+${paramsUrl.owner}`,
+          id: `${paramsUrl?.repo}+${paramsUrl?.owner}`,
           issues: copy,
         })
       );
@@ -65,7 +65,6 @@ export const ContainerIssues /* : React.FC<IContainerIssuesProps> */ = ({
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     highlightIndicator(e);
-    setActive(true);
   };
 
   const clearHighlights = (els?: HTMLElement[]) => {
@@ -103,42 +102,59 @@ export const ContainerIssues /* : React.FC<IContainerIssuesProps> */ = ({
     );
   };
 
-  const getIndicators = () => {
-    return Array.from(
-      document.querySelectorAll(`[data-column="${column}"]`)
-    ) as HTMLElement[];
+  const getIndicators = (): HTMLElement[] => {
+    return Array.from(document.querySelectorAll(`[data-column="${column}"]`));
   };
 
   const handleDragLeave = () => {
     clearHighlights();
-    setActive(false);
   };
 
   const filteredIssues = issues.filter((i: any) => i.column === column);
   return (
     <Container
-      style={{ marginRight: '2rem', marginLeft: '2rem', marginTop: '2rem' }}
+      style={{
+        marginRight: '2rem',
+        marginLeft: '2rem',
+        marginTop: '0.5rem',
+      }}
     >
       <Row>
-        <Col style={{ textAlign: 'center', maxWidth: '20rem' }}>{title}</Col>
+        <Col
+          style={{
+            textAlign: 'center',
+            maxWidth: '20rem',
+            fontSize: '1rem',
+          }}
+        >
+          {title}
+        </Col>
       </Row>
 
       <Row>
         <Col
-          /*   xs="auto" */
           onDrop={handleDragEnd}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           style={{
             backgroundColor: '#c0c9cc',
             width: '20rem',
-            height: '30rem',
-            textAlign: 'center',
+            height: '35rem',
+            marginTop: '0.5rem',
+
             maxWidth: '20rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
           }}
         >
           {isLoading ? (
-            'Loading..'
+            <Spinner
+              animation="border"
+              variant="light"
+              style={{ marginTop: '2rem' }}
+              data-testid="spinner"
+            />
           ) : (
             <>
               {filteredIssues.map((i): any => (

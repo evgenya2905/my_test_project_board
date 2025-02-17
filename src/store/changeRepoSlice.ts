@@ -1,14 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { setRepoList, getRepoList } from './localStorageUtils';
-
-type Issues = any[];
-
-interface Repo {
-  id: string;
-  name: string;
-  owner: string;
-  issues: Issues;
-}
+import { setRepoList, getRepoList } from '../utils/localStorageUtils';
+import { IRepo, INewIssues } from '../types';
 
 const initialState = { value: getRepoList() || [] };
 
@@ -16,7 +8,7 @@ export const changeRepoSlice = createSlice({
   name: 'repoList',
   initialState,
   reducers: {
-    addRepo: (state, action: PayloadAction<Repo>) => {
+    addRepo: (state, action: PayloadAction<IRepo>) => {
       const existingRepo = state.value.find((r) => r.id === action.payload.id);
       if (!existingRepo) {
         state.value.push(action.payload);
@@ -25,7 +17,7 @@ export const changeRepoSlice = createSlice({
     },
     updateRepoIssues: (
       state,
-      action: PayloadAction<{ id: string; issues: Issues }>
+      action: PayloadAction<{ id: string; issues: INewIssues[] }>
     ) => {
       const repo = state.value.find((r) => r.id === action.payload.id);
       if (repo) {

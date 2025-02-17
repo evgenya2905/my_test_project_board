@@ -1,6 +1,5 @@
-import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Board } from './Board';
+import { Board } from './components';
 
 const App = () => {
   return <Board />;

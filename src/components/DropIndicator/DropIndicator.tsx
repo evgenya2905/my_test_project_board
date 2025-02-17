@@ -6,6 +6,7 @@ type DropIndicatorProps = {
 export const DropIndicator = ({ beforeId, column }: DropIndicatorProps) => {
   return (
     <div
+      data-testid="drop-indicator"
       style={{
         marginTop: '0.125rem',
         marginBottom: '0.125rem',

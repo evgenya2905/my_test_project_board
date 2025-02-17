@@ -1,4 +1,5 @@
-import { ContainerIssues } from './ContainerIssues';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Container,
   Row,
@@ -12,26 +13,30 @@ import {
   useLazyGetToDoIssuesQuery,
   useLazyGetInProgressIssuesQuery,
   useLazyGetDoneIssuesQuery,
-} from './store/issuesApi';
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { IEndpointParameter, IIssue } from './types';
-import { useSelector, useDispatch } from 'react-redux';
-import { addRepo, updateRepoIssues } from './store/changeRepoSlice';
-import { RootState } from './store/store';
+  useLazyGetRepoStarsQuery,
+} from '../../store/issuesApi';
+import { addRepo, updateRepoIssues } from '../../store/changeRepoSlice';
+import { ContainerIssues } from '..';
+import { RootState } from '../../store/store';
+import { IEndpointParameter, INewIssues, IRepo } from '../../types';
 
 export const Board = () => {
-  const [getToDoIssues, { data: toDoIssues, isLoading: a }] =
+  const [getToDoIssues, { data: toDoIssues, isLoading: isLoadingToDo }] =
     useLazyGetToDoIssuesQuery();
-  const [getInProgressIssues, { data: inProgressIssues, isLoading: b }] =
-    useLazyGetInProgressIssuesQuery();
-  const [getDoneIssues, { data: doneIssues, isLoading: c }] =
+  const [
+    getInProgressIssues,
+    { data: inProgressIssues, isLoading: isLoadingInProgress },
+  ] = useLazyGetInProgressIssuesQuery();
+  const [getDoneIssues, { data: doneIssues, isLoading: isLoadingDone }] =
     useLazyGetDoneIssuesQuery();
-  const [issues, setIssues] = useState<IIssue[]>([]);
+  const [getStars, { data: stars }] = useLazyGetRepoStarsQuery();
 
-  const dispatch = useDispatch();
+  const [issues, setIssues] = useState<INewIssues[]>([]);
+  const [numberStars, setNumberStars] = useState(0);
   const [repoData, setRepoData] = useState<IEndpointParameter | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const dispatch = useDispatch();
   const dataStorage = useSelector((state: RootState) => state.repoList.value);
   const currentRepoIssues = useMemo(() => {
     return (
@@ -44,6 +49,7 @@ export const Board = () => {
   useEffect(() => {
     if (currentRepoIssues.length > 0) {
       setIssues(currentRepoIssues);
+      setNumberStars(currentRepoIssues[0].stars);
     }
   }, [currentRepoIssues]);
 
@@ -60,8 +66,8 @@ export const Board = () => {
 
     return null;
   };
-  const handleSubmit = (e: any) => {
-    /*    setIssues([]); */
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const url = inputRef.current?.value;
@@ -70,14 +76,6 @@ export const Board = () => {
       const parsedRepoData = parseRepoUrl(url);
 
       if (parsedRepoData) {
-        /*  const newRepo = {
-          id: `${parsedRepoData.repo}+${parsedRepoData.owner}`,
-          name: parsedRepoData.repo,
-          owner: parsedRepoData.owner,
-          issues: [],
-        };
-
-        dispatch(addRepo(newRepo)); */
         setRepoData(parsedRepoData);
       } else {
         alert('incorrect url');
@@ -91,74 +89,86 @@ export const Board = () => {
 
   useEffect(() => {
     if (repoData?.owner && repoData?.repo && currentRepoIssues.length === 0) {
-      /*  setIssues([]); */
       getToDoIssues({ owner: repoData.owner, repo: repoData.repo });
       getInProgressIssues({ owner: repoData.owner, repo: repoData.repo });
       getDoneIssues({ owner: repoData.owner, repo: repoData.repo });
+      getStars({ owner: repoData.owner, repo: repoData.repo });
     }
   }, [repoData?.owner, repoData?.repo, currentRepoIssues.length]);
 
   useEffect(() => {
     if (
-      !a &&
-      !b &&
-      !c &&
-      repoData?.owner &&
-      repoData?.repo &&
+      !isLoadingToDo &&
+      !isLoadingInProgress &&
+      !isLoadingDone &&
       toDoIssues &&
       inProgressIssues &&
       doneIssues &&
-      currentRepoIssues.length === 0
+      stars
     ) {
-      const newRepo = {
-        id: `${repoData.repo}+${repoData.owner}`,
-        name: repoData.repo,
-        owner: repoData.owner,
-        issues: [],
-      };
-
-      const newIssues = [
+      const newIssues: INewIssues[] = [
         ...toDoIssues.map((issue) => ({
           title: issue.title,
           id: issue.id,
           column: 'todo',
+          comments: issue.comments,
+          admin: issue.user.login,
+          number: issue.number,
+          dataCreated: issue.created_at,
+          stars: stars.stargazers_count,
         })),
         ...inProgressIssues.map((issue) => ({
           title: issue.title,
           id: issue.id,
           column: 'inProgress',
+          comments: issue.comments,
+          admin: issue.user.login,
+          number: issue.number,
+          dataCreated: issue.created_at,
+          stars: stars.stargazers_count,
         })),
         ...doneIssues.map((issue) => ({
           title: issue.title,
           id: issue.id,
           column: 'done',
+          comments: issue.comments,
+          admin: issue.user.login,
+          number: issue.number,
+          dataCreated: issue.created_at,
+          stars: stars.stargazers_count,
         })),
       ];
-      console.log('🚀 ~ useEffect ~ newIssues:', newIssues);
+
+      const newRepo: IRepo = {
+        id: `${repoData?.repo}+${repoData?.owner}`,
+        repo: repoData?.repo,
+        owner: repoData?.owner,
+        issues: [],
+      };
 
       dispatch(addRepo(newRepo));
       setIssues(newIssues);
+      setNumberStars(newIssues[0]?.stars);
+
       dispatch(
         updateRepoIssues({
-          id: `${repoData.repo}+${repoData.owner}`,
+          id: `${repoData?.repo}+${repoData?.owner}`,
           issues: newIssues,
         })
       );
     }
   }, [
-    repoData?.repo,
-    repoData?.owner,
     JSON.stringify(toDoIssues),
     JSON.stringify(inProgressIssues),
     JSON.stringify(doneIssues),
-    currentRepoIssues.length,
   ]);
 
   return (
     <>
       <Form
-        style={{ marginRight: '7rem', marginLeft: '7rem' }}
+        style={{ marginRight: '7rem', marginLeft: '7rem', marginTop: '0.5rem' }}
         onSubmit={handleSubmit}
+        data-testid="form"
       >
         <InputGroup>
           <Form.Control
@@ -171,8 +181,17 @@ export const Board = () => {
           <Button type="submit">Load issues</Button>
         </InputGroup>
       </Form>
-      <Card.Body style={{ marginLeft: '7rem', marginTop: '1rem' }}>
+      <Card.Body
+        style={{
+          marginLeft: '7rem',
+          marginTop: '1rem',
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'anchor-center',
+        }}
+      >
         <Card.Link
+          style={{ color: '#247d97' }}
           target="_blank"
           href={repoData ? `https://github.com/${repoData.owner}/` : '#'}
         >
@@ -180,6 +199,7 @@ export const Board = () => {
         </Card.Link>
         {' > '}
         <Card.Link
+          style={{ color: '#247d97' }}
           target="_blank"
           href={
             repoData
@@ -189,6 +209,26 @@ export const Board = () => {
         >
           {repoData ? repoData.repo : 'repo'}
         </Card.Link>
+        <Card.Text
+          style={{
+            display: 'flex',
+            gap: '0.7rem',
+            marginLeft: '2rem',
+            alignItems: 'anchor-center',
+          }}
+        >
+          <img
+            alt="star_icon"
+            src="../public/star.png"
+            style={{ width: '1.5rem', marginTop: '0' }}
+          />
+          {(numberStars &&
+            (numberStars > 1000
+              ? `${Math.floor(numberStars / 1000)} K`
+              : numberStars)) ||
+            0}{' '}
+          stars
+        </Card.Text>
       </Card.Body>
 
       <Container>
@@ -200,7 +240,7 @@ export const Board = () => {
               issues={issues}
               setIssues={setIssues}
               paramsUrl={repoData}
-              isLoading={a}
+              isLoading={isLoadingToDo}
             />
           </Col>
           <Col>
@@ -210,7 +250,7 @@ export const Board = () => {
               issues={issues}
               setIssues={setIssues}
               paramsUrl={repoData}
-              isLoading={b}
+              isLoading={isLoadingInProgress}
             />
           </Col>
           <Col>
@@ -220,7 +260,7 @@ export const Board = () => {
               issues={issues}
               setIssues={setIssues}
               paramsUrl={repoData}
-              isLoading={c}
+              isLoading={isLoadingDone}
             />
           </Col>
         </Row>
